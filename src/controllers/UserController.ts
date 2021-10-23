@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt';
 import dotenv from 'dotenv';
 import errorHandler from '../utils/errorHandler';
 import { User, UserRole } from '../entities/User';
+import { AuthRequest } from '../middleware/admin';
 
 dotenv.config();
 
@@ -67,6 +68,60 @@ export const createAdmin = async (req: Request, res: Response) => {
                 }
             });
         });
+
+    } catch (error) {
+        return errorHandler(res, 500, 'Server error');
+    }
+}
+
+export const adminLogin = async (req: Request, res: Response) => {
+    try {
+        const { username, password } = req.body;
+        const user = await User.findOne({where: {username: username, role: UserRole.ADMIN}});
+
+        if (!user) return errorHandler(res, 401, 'Unauthorized.');
+
+        const isValid = await bcrypt.compare(password, user.password);
+
+        if (!isValid) return errorHandler(res, 401, 'Invalid password');
+
+        const token = jwt.sign({ id: user.id }, process.env.SECRET_KEY, {
+            expiresIn: 1000 * 60 * 60 * 24 * 7,
+        });
+
+        return res.status(200).json({
+            user: {
+                username: user.username,
+                email: user.email,
+                id: user.id,
+                user: user.role,
+            },
+            token,
+        })
+
+    } catch (error) {
+        return errorHandler(res, 500, 'Server error');
+    }
+}
+
+export const adminProfile = async (req: AuthRequest, res: Response) => {
+    try {
+        const { user } = req;
+
+        // Just refreshes the duration of the token
+        const token = jwt.sign({ id: user.id }, process.env.SECRET_KEY, {
+            expiresIn: 1000 * 60 * 60 * 24 * 7,
+        });
+
+        return res.status(200).json({
+            user: {
+                username: user.username,
+                email: user.email,
+                id: user.id,
+                role: user.role,
+            },
+            token,
+        })
 
     } catch (error) {
         return errorHandler(res, 500, 'Server error');
