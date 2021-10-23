@@ -13,8 +13,6 @@ dotenv.config();
 app.use(bodyParser.json());
 app.use(router);
 
-app.get('/test', (req, res) => res.sendStatus(200));
-
 (async () => {
    try {
      // Connects to the database using your credentials
